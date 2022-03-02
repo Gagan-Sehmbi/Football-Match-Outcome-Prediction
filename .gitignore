@@ -1,5 +1,7 @@
 Football-Dataset/
 
 all_leagues_data.csv
+Match_Info.csv
+Team_Info.csv
 
 elo_dict.pkl
