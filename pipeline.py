@@ -1,7 +1,17 @@
 # %% IMPORT LIBRARIES
 import os
 import glob
+
+import numpy as np
 import pandas as pd
+import pickle
+
+import difflib
+
+import sklearn
+from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import LabelEncoder, StandardScaler
+from sklearn.model_selection import train_test_split
 
 # %% IMPORT DATA
 # CREATE LEAGUE INFO CSV
@@ -30,7 +40,7 @@ frame = pd.concat(l, axis=0, ignore_index=True)
 frame.to_csv('League_Info.csv')
 
 # IMPORT LEAGUE INFO
-df_raw = pd.read_csv('all_leagues_data.csv', index_col=0)
+df_raw = pd.read_csv('League_Info.csv', index_col=0)
 
 # IMPORT MATCH INFO
 df_match = pd.read_csv('Match_Info.csv', index_col=0)
@@ -356,8 +366,6 @@ enc = LabelEncoder()
 df['Labels'] = enc.fit_transform(df['Home_Team_Result'])
 df.drop(columns=['Home_Team_Result'], inplace=True)
 
-classes = enc.classes_
-
 # SPLIT INPUT FEATURES FROM TARGET FEATURE
 X = df.drop(columns=['Labels'])
 y = df['Labels']
@@ -371,14 +379,24 @@ sc = StandardScaler()
 X_train = sc.fit_transform(X_train)
 X_test = sc.transform(X_test)
 
-# %% CREATE TRAIN, TEST AND CLASSES CSV
+# %% CREATE TRAIN, TEST, FEATURES AND CLASSES DATAFRAMES
 
-X_train.to_csv('X_train.csv')
-X_test.to_csv('X_test.csv')
-y_train.to_csv('y_train.csv')
-y_test.to_csv('y_test.csv')
+features = X.columns
+features_df = pd.DataFrame(features)
+features_df.to_csv('features.csv')
 
+classes = enc.classes_
 classes_df = pd.DataFrame(classes)
 classes_df.to_csv('classes.csv')
 
-# UPLOAD DATASETS TO DATABASE
+X_train_df = pd.DataFrame(X_train, columns=features)
+X_train_df.to_csv('X_train.csv')
+
+X_test_df = pd.DataFrame(X_test, columns=features)
+X_test_df.to_csv('X_test.csv')
+
+y_train.to_csv('y_train.csv')
+y_test.to_csv('y_test.csv')
+
+# %% UPLOAD DATASETS TO DATABASE
+
