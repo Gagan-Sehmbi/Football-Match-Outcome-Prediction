@@ -5,3 +5,11 @@ Match_Info.csv
 Team_Info.csv
 
 elo_dict.pkl
+
+X_train.csv
+X_test.csv
+y_train.csv
+y_test.csv
+features.csv
+classes.csv
+
