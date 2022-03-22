@@ -26,5 +26,5 @@ for file in all_files:
     l.append(df)
 
 frame = pd.concat(l, axis=0, ignore_index=True)
-frame.to_csv('all_leagues_data.csv')
+frame.to_csv('League_Info.csv')
 # %%
