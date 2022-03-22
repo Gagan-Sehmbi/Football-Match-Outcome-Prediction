@@ -332,18 +332,18 @@ home_col_list_2 = [i + '_' + 'Streak' for i in home_col_list]
 away_col_list = ['Away_Team_Score', 'Away_Team_Win', 'Away_Team_Draw', 'Away_Team_Loss']
 away_col_list_2 = [i + '_' + 'Streak' for i in away_col_list]
 
-for home_team, away_team in zip(home_teams, away_teams):
-    for season in seasons:
+
+for season in seasons:
+    for home_team in home_teams:
         home_temp_df = df.loc[(df['Home_Team'] == home_team) & (df['Season'] == season), home_col_list]
-        away_temp_df = df.loc[(df['Away_Team'] == away_team) & (df['Season'] == season), away_col_list]
-
         home_temp_df_2 = pd.DataFrame(((home_temp_df.values).cumsum(axis=0)) - np.maximum.accumulate(((home_temp_df.values).cumsum(axis=0))*((home_temp_df.values) == 0)), index=home_temp_df.index, columns=home_col_list_2)
-        away_temp_df_2 = pd.DataFrame(((away_temp_df.values).cumsum(axis=0)) - np.maximum.accumulate(((away_temp_df.values).cumsum(axis=0))*((away_temp_df.values) == 0)), index=away_temp_df.index, columns=away_col_list_2)
-
         home_temp_df_2 = home_temp_df_2.shift(fill_value=0)
-        away_temp_df_2 = away_temp_df_2.shift(fill_value=0)
-
         df.loc[(df['Home_Team'] == home_team) & (df['Season'] == season), home_col_list_2] = home_temp_df_2
+        
+    for away_team in away_teams:
+        away_temp_df = df.loc[(df['Away_Team'] == away_team) & (df['Season'] == season), away_col_list]
+        away_temp_df_2 = pd.DataFrame(((away_temp_df.values).cumsum(axis=0)) - np.maximum.accumulate(((away_temp_df.values).cumsum(axis=0))*((away_temp_df.values) == 0)), index=away_temp_df.index, columns=away_col_list_2)
+        away_temp_df_2 = away_temp_df_2.shift(fill_value=0)
         df.loc[(df['Away_Team'] == away_team) & (df['Season'] == season), away_col_list_2] = away_temp_df_2
 
 # DROP FEATURES DEEMED UNIMPORTANT
@@ -435,6 +435,5 @@ features.to_sql(name='Features_Table', con=engine, if_exists='replace', index=Fa
 
 classes = pd.read_csv('classes.csv')
 classes.to_sql(name='Classes_Table', con=engine, if_exists='replace', index=False)
-
 
 # %%
