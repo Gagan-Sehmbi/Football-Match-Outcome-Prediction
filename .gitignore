@@ -13,3 +13,5 @@ y_test.csv
 features.csv
 classes.csv
 
+__pycache__/
+login.py
