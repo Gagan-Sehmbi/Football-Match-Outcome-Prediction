@@ -13,6 +13,10 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.model_selection import train_test_split
 
+import pymysql
+from sqlalchemy import create_engine, inspect
+from login import football_result_prediction_db_details
+
 # %% IMPORT DATA
 # CREATE LEAGUE INFO CSV
 
@@ -398,5 +402,39 @@ X_test_df.to_csv('X_test.csv')
 y_train.to_csv('y_train.csv')
 y_test.to_csv('y_test.csv')
 
-# %% UPLOAD DATASETS TO DATABASE
+# %% UPLOAD DATA TO DATABASE
+# CONNECT TO DATABASE
+DATABASE_TYPE = 'mysql'
+DBAPI = 'pymysql'
+ENDPOINT = 'football-results-db-instance.cfvpwrpdvrbp.eu-west-2.rds.amazonaws.com'
+USER = football_result_prediction_db_details()['User Name']
+PASSWORD = football_result_prediction_db_details()['Password']
+PORT = int(3306)
+DATABASE = 'football_results_db'
 
+engine = create_engine(f"{DATABASE_TYPE}+{DBAPI}://{USER}:{PASSWORD}@{ENDPOINT}:{PORT}/{DATABASE}")
+inspector = inspect(engine)
+
+engine.connect()
+
+# UPLOAD DATA
+X_train = pd.read_csv('X_train.csv')
+X_train.to_sql(name='Training_Inputs_Table', con=engine, if_exists='replace', index=False)
+
+X_test = pd.read_csv('X_test.csv')
+X_test.to_sql(name='Testing_Inputs_Table', con=engine, if_exists='replace', index=False)
+
+y_train = pd.read_csv('y_train.csv')
+y_train.to_sql(name='Training_Outputs_Table', con=engine, if_exists='replace', index=False)
+
+y_test = pd.read_csv('y_test.csv')
+y_test.to_sql(name='Testing_Outputs_Table', con=engine, if_exists='replace', index=False)
+
+features = pd.read_csv('features.csv')
+features.to_sql(name='Features_Table', con=engine, if_exists='replace', index=False)
+
+classes = pd.read_csv('classes.csv')
+classes.to_sql(name='Classes_Table', con=engine, if_exists='replace', index=False)
+
+
+# %%
