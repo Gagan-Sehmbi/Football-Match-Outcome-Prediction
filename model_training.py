@@ -36,20 +36,20 @@ engine.connect()
 
 # %% IMPORT DATA
 X_train = pd.read_sql_table('Training_Inputs_Table', engine, index_col='Unnamed: 0')
-X_train.reset_index(drop=True, inplace=True)
+X_train = X_train.to_numpy()
 
 y_train = pd.read_sql_table('Training_Outputs_Table', engine, index_col='Unnamed: 0')
-y_train.reset_index(drop=True, inplace=True)
+y_train = y_train.to_numpy()
 
 X_test = pd.read_sql_table('Testing_Inputs_Table', engine, index_col='Unnamed: 0')
-X_test.reset_index(drop=True, inplace=True)
+X_test = X_test.to_numpy()
 
 y_test = pd.read_sql_table('Testing_Outputs_Table', engine, index_col='Unnamed: 0')
-y_test.reset_index(drop=True, inplace=True)
+y_test = y_test.to_numpy()
 
 classes = pd.read_sql_table('Classes_Table', engine, index_col='Unnamed: 0')
 classes.reset_index(drop=True, inplace=True)
-#classes = list(classes.values)
+
 
 # %% BASELINE MODEL PERFORMANCE (LOGISTIC REGRESSION)
 lr = LogisticRegression()
@@ -95,6 +95,7 @@ y_pred_lr = lr.predict(X_test)
 print('LR Complete')
 f = time.perf_counter()
 print(f-s)
+print(classification_report(y_true=y_test, y_pred=y_pred_lr, target_names=classes['0'].values))
 
 s = time.perf_counter()
 sgd.fit(X_train, y_train)
@@ -102,6 +103,7 @@ y_pred_sgd = sgd.predict(X_test)
 print('SGD Complete')
 f = time.perf_counter()
 print(f-s)
+print(classification_report(y_true=y_test, y_pred=y_pred_sgd, target_names=classes['0'].values))
 
 s = time.perf_counter()
 svm.fit(X_train, y_train)
@@ -109,6 +111,7 @@ y_pred_svm = svm.predict(X_test)
 print('SVM Complete')
 f = time.perf_counter()
 print(f-s)
+print(classification_report(y_true=y_test, y_pred=y_pred_svm, target_names=classes['0'].values))
 
 s = time.perf_counter()
 gnb.fit(X_train, y_train)
@@ -116,6 +119,7 @@ y_pred_gnb = gnb.predict(X_test)
 print('GNB Complete')
 f = time.perf_counter()
 print(f-s)
+print(classification_report(y_true=y_test, y_pred=y_pred_gnb, target_names=classes['0'].values))
 
 s = time.perf_counter()
 knn.fit(X_train, y_train)
@@ -123,6 +127,7 @@ y_pred_knn = knn.predict(X_test)
 print('KNN Complete')
 f = time.perf_counter()
 print(f-s)
+print(classification_report(y_true=y_test, y_pred=y_pred_knn, target_names=classes['0'].values))
 
 s = time.perf_counter()
 dt.fit(X_train, y_train)
@@ -130,6 +135,7 @@ y_pred_dt = dt.predict(X_test)
 print('DT Complete')
 f = time.perf_counter()
 print(f-s)
+print(classification_report(y_true=y_test, y_pred=y_pred_dt, target_names=classes['0'].values))
 
 s = time.perf_counter()
 rfc.fit(X_train, y_train)
@@ -137,6 +143,8 @@ y_pred_rfc = rfc.predict(X_test)
 print('RFC Complete')
 f = time.perf_counter()
 print(f-s)
+print(classification_report(y_true=y_test, y_pred=y_pred_rfc, target_names=classes['0'].values))
+
 
 # %% TEST ALL MODELS
 preds = [y_pred_lr, y_pred_sgd, y_pred_svm, y_pred_gnb, y_pred_knn, y_pred_dt, y_pred_rfc]
@@ -163,6 +171,8 @@ performance_df.reset_index(inplace=True)
 performance_df.rename(columns={'level_0':'Model', 'level_1':'Class'}, inplace=True)
 performance_df['Class'] = performance_df['Class'].apply(lambda x: classes['0'][x])
 
+# %%
+performance_df
 # %% VISUALISE RESULTS
 sns.barplot(data=performance_df, x='Model', y='Precision', hue='Class')
 
