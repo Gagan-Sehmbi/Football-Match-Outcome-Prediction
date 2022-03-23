@@ -39,17 +39,16 @@ X_train = pd.read_sql_table('Training_Inputs_Table', engine, index_col='Unnamed:
 X_train = X_train.to_numpy()
 
 y_train = pd.read_sql_table('Training_Outputs_Table', engine, index_col='Unnamed: 0')
-y_train = y_train.to_numpy()
+y_train = y_train.to_numpy().flatten()
 
 X_test = pd.read_sql_table('Testing_Inputs_Table', engine, index_col='Unnamed: 0')
 X_test = X_test.to_numpy()
 
 y_test = pd.read_sql_table('Testing_Outputs_Table', engine, index_col='Unnamed: 0')
-y_test = y_test.to_numpy()
+y_test = y_test.to_numpy().flatten()
 
 classes = pd.read_sql_table('Classes_Table', engine, index_col='Unnamed: 0')
 classes.reset_index(drop=True, inplace=True)
-
 
 # %% BASELINE MODEL PERFORMANCE (LOGISTIC REGRESSION)
 lr = LogisticRegression()
