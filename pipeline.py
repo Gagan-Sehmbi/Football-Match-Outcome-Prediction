@@ -238,13 +238,12 @@ df.drop(columns='Country', inplace=True)
 def num_filter(x):
     numeric_filter = filter(str.isdigit, str(x))
     numeric_string = "".join(numeric_filter)
-    return numeric_string
+    try:
+        return int(numeric_string)
+    except ValueError:
+        return np.nan
 
 df['Capacity'] = df['Capacity'].apply(lambda x: num_filter(x))
-df['Capacity'].value_counts().sort_index()
-
-# DROP NULL VALUES FROM ELO FEATURES
-df.dropna(subset=['Home_ELO', 'Away_ELO'], inplace=True)
 
 # DROP NULL VALUES
 df.dropna(inplace=True)
@@ -346,14 +345,12 @@ for season in seasons:
         away_temp_df_2 = away_temp_df_2.shift(fill_value=0)
         df.loc[(df['Away_Team'] == away_team) & (df['Season'] == season), away_col_list_2] = away_temp_df_2
 
-# DROP FEATURES DEEMED UNIMPORTANT
-df.drop(
-    columns=[
-        'Home_Team', 'Away_Team', 'Result', 'Link',
-        'League', 'Referee',
-        'Stadium', 'Pitch', 'Capacity',
-        'Region'], 
-        inplace=True)
+df.info()
+
+# %% DROP FEATURES DEEMED UNIMPORTANT
+df.drop(columns=['Home_Team', 'Away_Team', 'Result', 'Link', 'Referee', 'Stadium', 'Pitch', 'Region'], inplace=True)
+
+#df.drop(columns=['League', 'Capacity'], inplace=True)
 
 df.drop(columns=['Time', 'Day', 'Date', 'Month', 'Year'], inplace=True)
 
@@ -363,47 +360,18 @@ df.drop(columns=['Home_Team_Score', 'Away_Team_Score'], inplace=True)
 
 df.drop(columns=['Home_Team_Win', 'Home_Team_Draw', 'Home_Team_Loss'], inplace=True)
 
-# %% ENCODING, SCALING AND SPLITTING DATASET
-# ENCODE TARGET VARIABLE
+df.info()
+
+# %% ENCODE CATEGORICAL FEATURES
+df = pd.get_dummies(df, columns=['League'])
+df
+# %% ENCODE TARGET VARIABLE
 enc = LabelEncoder()
 
 df['Labels'] = enc.fit_transform(df['Home_Team_Result'])
 df.drop(columns=['Home_Team_Result'], inplace=True)
-
-# SPLIT INPUT FEATURES FROM TARGET FEATURE
-X = df.drop(columns=['Labels'])
-y = df['Labels']
-
-# SPLIT DATASET INTO TRAIN AND TEST SETS
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
-
-# SCALE INPUT VARIABLES
-sc = StandardScaler()
-
-X_train = sc.fit_transform(X_train)
-X_test = sc.transform(X_test)
-
-# %% CREATE TRAIN, TEST, FEATURES AND CLASSES DATAFRAMES
-
-features = X.columns
-features_df = pd.DataFrame(features)
-features_df.to_csv('features.csv')
-
-classes = enc.classes_
-classes_df = pd.DataFrame(classes)
-classes_df.to_csv('classes.csv')
-
-X_train_df = pd.DataFrame(X_train, columns=features)
-X_train_df.to_csv('X_train.csv')
-
-X_test_df = pd.DataFrame(X_test, columns=features)
-X_test_df.to_csv('X_test.csv')
-
-y_train.to_csv('y_train.csv')
-y_test.to_csv('y_test.csv')
-
+df
 # %% UPLOAD DATA TO DATABASE
-# CONNECT TO DATABASE
 DATABASE_TYPE = 'mysql'
 DBAPI = 'pymysql'
 ENDPOINT = 'football-results-db-instance.cfvpwrpdvrbp.eu-west-2.rds.amazonaws.com'
@@ -417,23 +385,16 @@ inspector = inspect(engine)
 
 engine.connect()
 
-# UPLOAD DATA
-X_train = pd.read_csv('X_train.csv')
-X_train.to_sql(name='Training_Inputs_Table', con=engine, if_exists='replace', index=False)
+df.to_csv('cleaned_dataset.csv')
+df.to_sql(name='Clean_Dataset', con=engine, if_exists='replace', index=False)
 
-X_test = pd.read_csv('X_test.csv')
-X_test.to_sql(name='Testing_Inputs_Table', con=engine, if_exists='replace', index=False)
+features = df.drop(columns='Labels').columns
+features_df = pd.DataFrame(features)
+features_df.to_csv('features.csv')
+features_df.to_sql(name='Features_Table', con=engine, if_exists='replace', index=False)
 
-y_train = pd.read_csv('y_train.csv')
-y_train.to_sql(name='Training_Outputs_Table', con=engine, if_exists='replace', index=False)
+classes = enc.classes_
+classes_df = pd.DataFrame(classes)
+classes_df.to_csv('classes.csv')
+classes_df.to_sql(name='Classes_Table', con=engine, if_exists='replace', index=False)
 
-y_test = pd.read_csv('y_test.csv')
-y_test.to_sql(name='Testing_Outputs_Table', con=engine, if_exists='replace', index=False)
-
-features = pd.read_csv('features.csv')
-features.to_sql(name='Features_Table', con=engine, if_exists='replace', index=False)
-
-classes = pd.read_csv('classes.csv')
-classes.to_sql(name='Classes_Table', con=engine, if_exists='replace', index=False)
-
-# %%
