@@ -1,5 +1,7 @@
 # %% IMPORT LIBRARIES
 import time
+import itertools
+import typing
 
 import numpy as np
 import pandas as pd
@@ -20,7 +22,7 @@ from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 
-from sklearn.metrics import precision_recall_fscore_support, classification_report
+from sklearn.metrics import precision_recall_fscore_support, classification_report, accuracy_score
 
 
 # %% IMPORT DATA FROM DATABASE
@@ -168,5 +170,86 @@ axes[2].set_title('F_Score')
 
 plt.show()
 
+# %% CHECK FEATURE IMPORTANCE FOR RFC MODEL
+
+importances = rfc.feature_importances_
+std = np.std([tree.feature_importances_ for tree in rfc.estimators_], axis=0)
+forest_importances = pd.Series(importances, index=features['0'])
+
+fig, ax = plt.subplots(figsize=(15, 5))
+forest_importances.plot.bar(yerr=std, ax=ax)
+ax.set_title("Feature importances using MDI")
+ax.set_ylabel("Mean decrease in impurity")
+fig.show()
+
+# %% HYPERPARAMETER TUNING + K-FOLD CROSS VALIDATION
+
+def k_fold(dataset, n_splits: int = 5):
+    chunks = np.array_split(dataset, n_splits)
+    for i in range(n_splits):
+        training = chunks[:i] + chunks[i + 1 :]
+        training = np.concatenate(training)
+        validation = chunks[i]
+
+        yield training, validation
+
+def grid_search(hyperparameters: typing.Dict[str, typing.Iterable]):
+    keys, values = zip(*hyperparameters.items())
+    yield from (dict(zip(keys, v)) for v in itertools.product(*values))
+
+
+# Number of trees in random forest
+n_estimators = [int(x) for x in np.linspace(start = 200, stop = 2000, num = 10)]
+# Number of features to consider at every split
+max_features = ['auto', 'sqrt']
+# Maximum number of levels in tree
+max_depth = [int(x) for x in np.linspace(10, 110, num = 11)]
+max_depth.append(None)
+# Minimum number of samples required to split a node
+min_samples_split = [2, 5, 10]
+# Minimum number of samples required at each leaf node
+min_samples_leaf = [1, 2, 4]
+# Method of selecting samples for training each tree
+bootstrap = [True, False]
+
+# Create the random grid
+random_grid = {'n_estimators': n_estimators,
+               'max_features': max_features,
+               'max_depth': max_depth,
+               'min_samples_split': min_samples_split,
+               'min_samples_leaf': min_samples_leaf,
+               'bootstrap': bootstrap}
+
+
+random_grid
 # %%
+# K-Fold evaluation
+best_hyperparams, best_accuracy = None, 0
+n_splits = 5
+# Grid search goes first
+for hyperparams in grid_search(random_grid):
+    acc = 0
+    # Instead of validation we use K-Fold
+    for (X_train, X_val), (y_train, y_val) in zip(k_fold(X, n_splits), k_fold(y, n_splits)):
+
+        sc = StandardScaler()
+        X_train = sc.fit_transform(X_train)
+        X_val = sc.transform(X_val)
+        
+        model = RandomForestClassifier(**hyperparams)
+        model.fit(X_train, y_train)
+
+        y_val_pred = model.predict(X_val)
+        fold_acc = accuracy_score(y_val, y_val_pred)
+        acc += fold_acc
+    # Take mean from all folds as final validation score
+    total_acc = acc / n_splits
+    print(f"H-Params: {hyperparams} Accuracy: {total_acc}")
+    if total_acc > best_accuracy:
+        best_accuracy = total_acc
+        best_hyperparams = hyperparams
+
+# And see our final results
+print(f"Best loss: {best_accuracy}")
+print(f"Best hyperparameters: {best_hyperparams}")
 
