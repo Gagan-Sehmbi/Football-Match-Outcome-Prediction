@@ -1,7 +1,5 @@
 # %% IMPORT LIBRARIES
 import time
-import itertools
-import typing
 
 import numpy as np
 import pandas as pd
@@ -14,15 +12,18 @@ from sqlalchemy import create_engine, inspect
 from login import football_result_prediction_db_details
 
 from sklearn.preprocessing import StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, GridSearchCV
 
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import GaussianNB
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
+from sklearn.pipeline import Pipeline
 
 from sklearn.metrics import precision_recall_fscore_support, classification_report, accuracy_score
+
+from joblib import dump, load
 
 
 # %% IMPORT DATA FROM DATABASE
@@ -41,9 +42,14 @@ inspector = inspect(engine)
 engine.connect()
 
 # %% IMPORT DATA
-df = pd.read_sql_table('Clean_Dataset', engine, index_col=0)
-features = pd.read_sql_table('Features_Table', engine, index_col=0)
-classes = pd.read_sql_table('Classes_Table', engine, index_col=0)
+#df = pd.read_sql_table('Clean_Dataset', engine, index_col=0)
+#features = pd.read_sql_table('Features_Table', engine, index_col=0)
+#classes = pd.read_sql_table('Classes_Table', engine, index_col=0)
+
+df = pd.read_csv('cleaned_dataset.csv', index_col=0)
+features = pd.read_csv('features.csv', index_col=0)
+classes = pd.read_csv('classes.csv', index_col=0)
+
 
 # %% SPLIT AND SCALE DATASET
 # SPLIT INPUT FEATURES FROM TARGET FEATURE
@@ -51,22 +57,22 @@ X = df.drop(columns=['Labels'])
 y = df['Labels']
 
 # SPLIT DATASET INTO TRAIN AND TEST SETS
-X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
 y_train = y_train.to_numpy().flatten()
-y_val = y_val.to_numpy().flatten()
+y_test = y_test.to_numpy().flatten()
 
 # SCALE INPUT VARIABLES
 sc = StandardScaler()
 
 X_train = sc.fit_transform(X_train)
-X_val = sc.transform(X_val)
+X_test = sc.transform(X_test)
 
 # %% BASELINE MODEL PERFORMANCE (LOGISTIC REGRESSION)
 lr = LogisticRegression()
 
 s = time.perf_counter()
 lr.fit(X_train, y_train)
-y_pred_lr = lr.predict(X_val)
+y_pred_lr = lr.predict(X_test)
 print('LR Complete')
 f = time.perf_counter()
 print(f-s)
@@ -75,7 +81,7 @@ print('Performance of Logistic Regression Classifier (Train)\n')
 print(classification_report(y_true=y_train, y_pred=lr.predict(X_train), target_names=classes['0'].values))
 
 print('Performance of Logistic Regression Classifier (Test)\n')
-print(classification_report(y_true=y_val, y_pred=y_pred_lr, target_names=classes['0'].values))
+print(classification_report(y_true=y_test, y_pred=y_pred_lr, target_names=classes['0'].values))
 
 
 # %% COMPARE MODEL PERFORMANCES
@@ -83,51 +89,51 @@ print(classification_report(y_true=y_val, y_pred=y_pred_lr, target_names=classes
 lr = LogisticRegression()
 s = time.perf_counter()
 lr.fit(X_train, y_train)
-y_pred_lr = lr.predict(X_val)
+y_pred_lr = lr.predict(X_test)
 print('LR Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_val, y_pred=y_pred_lr, target_names=classes['0'].values))
+print(classification_report(y_true=y_test, y_pred=y_pred_lr, target_names=classes['0'].values))
 
 # NB models
 gnb = GaussianNB()
 s = time.perf_counter()
 gnb.fit(X_train, y_train)
-y_pred_gnb = gnb.predict(X_val)
+y_pred_gnb = gnb.predict(X_test)
 print('GNB Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_val, y_pred=y_pred_gnb, target_names=classes['0'].values))
+print(classification_report(y_true=y_test, y_pred=y_pred_gnb, target_names=classes['0'].values))
 
 # neighbors models
 knn = KNeighborsClassifier()
 s = time.perf_counter()
 knn.fit(X_train, y_train)
-y_pred_knn = knn.predict(X_val)
+y_pred_knn = knn.predict(X_test)
 print('KNN Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_val, y_pred=y_pred_knn, target_names=classes['0'].values))
+print(classification_report(y_true=y_test, y_pred=y_pred_knn, target_names=classes['0'].values))
 
 # tree models
 dt = DecisionTreeClassifier()
 s = time.perf_counter()
 dt.fit(X_train, y_train)
-y_pred_dt = dt.predict(X_val)
+y_pred_dt = dt.predict(X_test)
 print('DT Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_val, y_pred=y_pred_dt, target_names=classes['0'].values))
+print(classification_report(y_true=y_test, y_pred=y_pred_dt, target_names=classes['0'].values))
 
 # ensemble models
 rfc = RandomForestClassifier()
 s = time.perf_counter()
 rfc.fit(X_train, y_train)
-y_pred_rfc = rfc.predict(X_val)
+y_pred_rfc = rfc.predict(X_test)
 print('RFC Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_val, y_pred=y_pred_rfc, target_names=classes['0'].values))
+print(classification_report(y_true=y_test, y_pred=y_pred_rfc, target_names=classes['0'].values))
 
 
 # %% TEST ALL MODELS
@@ -138,7 +144,7 @@ cols = ['Precision', 'Recall', 'F_Score', 'Support']
 performance_df = pd.DataFrame(index=idx, columns=cols)
 
 for pred, ids in zip(preds, idx):
-    result = precision_recall_fscore_support(y_true=y_val, y_pred=pred)
+    result = precision_recall_fscore_support(y_true=y_test, y_pred=pred)
     precision, recall, f_score, support = result
     performance_df.loc[ids, 'Precision'] = precision
     performance_df.loc[ids, 'Recall'] = recall
@@ -180,10 +186,42 @@ fig, ax = plt.subplots(figsize=(15, 5))
 forest_importances.plot.bar(yerr=std, ax=ax)
 ax.set_title("Feature importances using MDI")
 ax.set_ylabel("Mean decrease in impurity")
-fig.show()
 
-# %% HYPERPARAMETER TUNING + K-FOLD CROSS VALIDATION
+plt.show()
 
+# %% HYPERPARAMETER TUNING + K-FOLD CROSS VALIDATION (GRIDSEARCHCV)
+
+pipe = Pipeline([('classifier' , RandomForestClassifier())])
+# pipe = Pipeline([('classifier', RandomForestClassifier())])
+
+# Create param grid.
+
+param_grid = [
+    {'classifier' : [LogisticRegression()],
+     'classifier__penalty' : ['l1', 'l2'],
+    'classifier__C' : np.logspace(-4, 4, 20),
+    'classifier__solver' : ['liblinear']},
+    {'classifier' : [RandomForestClassifier()],
+    'classifier__n_estimators' : list(range(10,101,10)),
+    'classifier__max_features' : list(range(4,len(features)+1,5))}
+]
+
+# Create grid search object
+
+clf = GridSearchCV(pipe, param_grid = param_grid, cv = 5, verbose=True, n_jobs=-1)
+
+# Fit on data
+
+best_clf = clf.fit(X_train, y_train)
+
+# Persist the model
+model = best_clf.best_params_['classifier']
+model.fit(X_train, y_train)
+dump(model, 'classifier.joblib')
+
+# %% HYPERPARAMETER TUNING + K-FOLD CROSS VALIDATION (MANUAL)
+
+'''
 def k_fold(dataset, n_splits: int = 5):
     chunks = np.array_split(dataset, n_splits)
     for i in range(n_splits):
@@ -221,8 +259,6 @@ random_grid = {'n_estimators': n_estimators,
                'bootstrap': bootstrap}
 
 
-random_grid
-# %%
 # K-Fold evaluation
 best_hyperparams, best_accuracy = None, 0
 n_splits = 5
@@ -230,17 +266,17 @@ n_splits = 5
 for hyperparams in grid_search(random_grid):
     acc = 0
     # Instead of validation we use K-Fold
-    for (X_train, X_val), (y_train, y_val) in zip(k_fold(X, n_splits), k_fold(y, n_splits)):
+    for (X_train, X_test), (y_train, y_test) in zip(k_fold(X, n_splits), k_fold(y, n_splits)):
 
         sc = StandardScaler()
         X_train = sc.fit_transform(X_train)
-        X_val = sc.transform(X_val)
+        X_test = sc.transform(X_test)
         
         model = RandomForestClassifier(**hyperparams)
         model.fit(X_train, y_train)
 
-        y_val_pred = model.predict(X_val)
-        fold_acc = accuracy_score(y_val, y_val_pred)
+        y_test_pred = model.predict(X_test)
+        fold_acc = accuracy_score(y_test, y_test_pred)
         acc += fold_acc
     # Take mean from all folds as final validation score
     total_acc = acc / n_splits
@@ -252,4 +288,4 @@ for hyperparams in grid_search(random_grid):
 # And see our final results
 print(f"Best loss: {best_accuracy}")
 print(f"Best hyperparameters: {best_hyperparams}")
-
+'''
