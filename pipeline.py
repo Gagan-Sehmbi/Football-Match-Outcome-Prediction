@@ -10,8 +10,7 @@ import difflib
 
 import sklearn
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import LabelEncoder, StandardScaler
-from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import LabelEncoder
 
 import pymysql
 from sqlalchemy import create_engine, inspect
@@ -345,12 +344,10 @@ for season in seasons:
         away_temp_df_2 = away_temp_df_2.shift(fill_value=0)
         df.loc[(df['Away_Team'] == away_team) & (df['Season'] == season), away_col_list_2] = away_temp_df_2
 
-df.info()
-
 # %% DROP FEATURES DEEMED UNIMPORTANT
-df.drop(columns=['Home_Team', 'Away_Team', 'Result', 'Link', 'Referee', 'Stadium', 'Pitch', 'Region'], inplace=True)
+df.drop(columns=['Home_Team', 'Away_Team', 'Result', 'Link', 'Referee', 'Stadium', 'Pitch', 'Region', 'League'], inplace=True)
 
-#df.drop(columns=['League', 'Capacity'], inplace=True)
+df.drop(columns=['Home_Yellow', 'Home_Red', 'Away_Yellow', 'Away_Red'], inplace=True)
 
 df.drop(columns=['Time', 'Day', 'Date', 'Month', 'Year'], inplace=True)
 
@@ -360,17 +357,13 @@ df.drop(columns=['Home_Team_Score', 'Away_Team_Score'], inplace=True)
 
 df.drop(columns=['Home_Team_Win', 'Home_Team_Draw', 'Home_Team_Loss'], inplace=True)
 
-df.info()
 
-# %% ENCODE CATEGORICAL FEATURES
-df = pd.get_dummies(df, columns=['League'])
-df
 # %% ENCODE TARGET VARIABLE
 enc = LabelEncoder()
 
 df['Labels'] = enc.fit_transform(df['Home_Team_Result'])
 df.drop(columns=['Home_Team_Result'], inplace=True)
-df
+
 # %% UPLOAD DATA TO DATABASE
 DATABASE_TYPE = 'mysql'
 DBAPI = 'pymysql'
