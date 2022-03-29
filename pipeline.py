@@ -1,4 +1,5 @@
 # %% IMPORT LIBRARIES
+from operator import index
 import os
 import glob
 
@@ -17,33 +18,15 @@ from sqlalchemy import create_engine, inspect
 from login import football_result_prediction_db_details
 
 # %% IMPORT DATA
-# CREATE LEAGUE INFO CSV
-
-leagues = [x[0] for x in os.walk('Football-Dataset')]
-for league in leagues[1:]:
-    league_files = glob.glob(league + '/*.csv')
-    league_name = league.split('/')[1]
-    l = []
-    for file in league_files:
-        df = pd.read_csv(file, index_col=None, header=0)
-        l.append(df)
-
-    frame = pd.concat(l, axis=0, ignore_index=True)
-    frame.to_csv(f'Football-Dataset/{league_name}.csv')
-
-path = 'Football-Dataset'
-all_files = glob.glob(path + '/*.csv')
-
-l = []
-for file in all_files:
-    df = pd.read_csv(file, index_col=0, header=0)
-    l.append(df)
-
-frame = pd.concat(l, axis=0, ignore_index=True)
-frame.to_csv('League_Info.csv')
 
 # IMPORT LEAGUE INFO
 df_raw = pd.read_csv('League_Info.csv', index_col=0)
+
+# IMPORT RESULTS (LATEST LEAGUE INFO)
+df_results = pd.read_csv('Results.csv', index_col=0)
+
+# IMPORT FIXTURES (LATEST LEAGUE INFO)
+df_fixtures = pd.read_csv('Fixtures.csv', index_col=0)
 
 # IMPORT MATCH INFO
 df_match = pd.read_csv('Match_Info.csv', index_col=0)
@@ -60,7 +43,9 @@ df_elo = pd.DataFrame.from_dict(elo_dict, orient='index')
 df_elo.reset_index(inplace=True)
 df_elo.rename(columns={'index': 'Link', 'Elo_home': 'Home_ELO', 'Elo_away': 'Away_ELO'}, inplace=True)
 
+# %%
 
+df_fixtures
 
 
 
