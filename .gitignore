@@ -4,6 +4,8 @@ Data/
 League_Info.csv
 Match_Info.csv
 Team_Info.csv
+Fixtures.csv
+Results.csv
 
 elo_dict.pkl
 
