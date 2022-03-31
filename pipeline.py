@@ -1,8 +1,4 @@
 # %% IMPORT LIBRARIES
-from operator import index
-import os
-import glob
-
 import numpy as np
 import pandas as pd
 import pickle
@@ -21,12 +17,15 @@ from login import football_result_prediction_db_details
 
 # IMPORT LEAGUE INFO
 df_raw = pd.read_csv('League_Info.csv', index_col=0)
+df_raw.drop(columns='Unnamed: 0', inplace=True)
 
 # IMPORT RESULTS (LATEST LEAGUE INFO)
 df_results = pd.read_csv('Results.csv', index_col=0)
+df_results.drop(columns='Unnamed: 0', inplace=True)
 
 # IMPORT FIXTURES (LATEST LEAGUE INFO)
 df_fixtures = pd.read_csv('Fixtures.csv', index_col=0)
+df_fixtures.drop(columns='Unnamed: 0', inplace=True)
 
 # IMPORT MATCH INFO
 df_match = pd.read_csv('Match_Info.csv', index_col=0)
@@ -42,12 +41,6 @@ elo_dict = pickle.load(open('elo_dict.pkl', 'rb'))
 df_elo = pd.DataFrame.from_dict(elo_dict, orient='index')
 df_elo.reset_index(inplace=True)
 df_elo.rename(columns={'index': 'Link', 'Elo_home': 'Home_ELO', 'Elo_away': 'Away_ELO'}, inplace=True)
-
-# %%
-
-df_fixtures
-
-
 
 # %% DATA CLEANING
 # STANDARDISE LINK COLUMN IN EACH DATASET 
@@ -78,7 +71,8 @@ df_raw['Home_Team'] = df_raw['Home_Team'].apply(lambda x: teams_dict[x])
 df_raw['Away_Team'] = df_raw['Away_Team'].apply(lambda x: teams_dict[x])
 df_team['Home_Team'] = df_team['Home_Team'].apply(lambda x: teams_dict[x])
 
-# COMBINE DATASETS
+
+# %% COMBINE DATASETS
 df = pd.merge(df_raw, df_match, on='Link', how='outer')
 df = pd.merge(df, df_team, on='Home_Team', how='outer')
 df = pd.merge(df, df_elo, on='Link', how='outer')
@@ -91,6 +85,52 @@ df.dropna(subset=['Home_Team', 'Away_Team', 'Result'], inplace=True)
 
 # DROP INVALID RESULTS
 df.drop(df[df['Result'].str.len() != 3].index, inplace=True)
+
+# DROP UNUSED COLUMNS
+df.drop(columns=['Link', 'Date_New', 'Referee', 'Home_Yellow', 'Home_Red', 'Away_Yellow', 'Away_Red', 'City', 'Country', 'Pitch'], inplace=True)
+
+df = df.append(df_results)
+df = df.append(df_fixtures)
+df.drop(columns='Link', inplace=True)
+
+# %%
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 # SPLIT RESULTS TO HOME TEAM AND AWAY TEAM SCORE FEATURES
 df['Home_Team_Score'] = df['Result'].apply(lambda x: int(x.split('-')[0]))
