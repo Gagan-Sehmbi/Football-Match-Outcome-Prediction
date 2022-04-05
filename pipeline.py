@@ -92,46 +92,13 @@ df.drop(columns=['Link', 'Date_New', 'Referee', 'Home_Yellow', 'Home_Red', 'Away
 df = df.append(df_results)
 df = df.append(df_fixtures)
 df.drop(columns='Link', inplace=True)
+df.reset_index(inplace=True, drop=True)
 
-# %%
-
-
-
-
+# FILL NAN VALUES IN RESULT COLUMN
+df.loc[df['Result'].isna(), 'Result'] = '10-10'
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+# %% 
 # SPLIT RESULTS TO HOME TEAM AND AWAY TEAM SCORE FEATURES
 df['Home_Team_Score'] = df['Result'].apply(lambda x: int(x.split('-')[0]))
 df['Away_Team_Score'] = df['Result'].apply(lambda x: int(x.split('-')[1]))
@@ -162,102 +129,7 @@ df['Away_Team_Result'] = df.apply(lambda x: result(x), axis=1)
 df = df.join(pd.get_dummies(df['Home_Team_Result'], prefix='Home_Team'))
 df = df.join(pd.get_dummies(df['Away_Team_Result'], prefix='Away_Team'))
 
-# SPLIT DATE FEATURE
-def date_split(x, value):
-    x = x.split(', ')
-    if len(x) == 3:
-        if value=='Time':
-            return x[-1].strip()
-        elif value=='Day':
-            return x[0].strip()
-
-        elif value=='Date':
-            x = x[1]
-            x = x.split(' ')
-            return int(x[0].strip())
-
-        elif value=='Month':
-            x = x[1]
-            x = x.split(' ')
-            return x[1].strip()
-
-        elif value=='Year':
-            x = x[1]
-            x = x.split(' ')
-            return int(x[2].strip())
-
-        else:
-            return 'NA'
-
-    else:
-        if value=='Time':
-            return 'NA'
-
-        elif value=='Date':
-            x = x[1]
-            x = x.split(' ')
-            return int(x[0].strip())
-
-        elif value=='Month':
-            x = x[1]
-            x = x.split(' ')
-            return x[1].strip()
-
-        elif value=='Year':
-            x = x[1]
-            x = x.split(' ')
-            return int(x[2].strip())
-
-        else:
-            return 'NA'
-
-df['Time'] = df.loc[~df['Date_New'].isna(),'Date_New'].apply(lambda x: date_split(x, 'Time'))
-df['Day'] = df.loc[~df['Date_New'].isna(),'Date_New'].apply(lambda x: date_split(x, 'Day'))
-df['Date'] = df.loc[~df['Date_New'].isna(),'Date_New'].apply(lambda x: date_split(x, 'Date'))
-df['Month'] = df.loc[~df['Date_New'].isna(),'Date_New'].apply(lambda x: date_split(x, 'Month'))
-df['Year'] = df.loc[~df['Date_New'].isna(),'Date_New'].apply(lambda x: date_split(x, 'Year'))
-
-df.drop(columns='Date_New', inplace=True)
-df = df.loc[df['Day'] != 'NA']
-
-# MODIFY PRECISE TIME FEATURE TO HOURLY
-df['Time'] = df.loc[~df['Time'].isna(),'Time'].apply(lambda x: int(x.split(':')[0]))
-
-# MODIFY TIME FEATURE TO BINS
-df['Time'] = pd.cut(df['Time'], bins=[-1, 11, 16, 20, 24], labels=['Morning', 'Afternoon', 'Evening', 'Night'])
-
-# IMPUTE YELLOW/ RED CARD VALUES WITH MEAN VALUES
-mean_imputer = SimpleImputer(missing_values=np.nan, strategy='mean')
-df['Home_Yellow'] = mean_imputer.fit_transform(df['Home_Yellow'].values.reshape(-1, 1))
-df['Home_Red'] = mean_imputer.fit_transform(df['Home_Red'].values.reshape(-1, 1))
-df['Away_Yellow'] = mean_imputer.fit_transform(df['Away_Yellow'].values.reshape(-1, 1))
-df['Away_Red'] = mean_imputer.fit_transform(df['Away_Red'].values.reshape(-1, 1))
-
-# CREATE REGION FEATURE FROM LEAGUE FEATURE AND DROP OTHER LOCATION FEATURES
-df['Region'] = df['League']
-values_to_update ={
-    'Region': {
-        'segunda_division': 'Spain',
-        'primera_division': 'Spain',
-        'serie_b': 'Italy',
-        'serie_a': 'Italy',
-        'premier_league': 'England',
-        'championship': 'England',
-        'ligue_1': 'France',
-        'ligue_2': 'France',
-        '2_liga': 'Germany',
-        'bundesliga': 'Germany',
-        'eredivisie': 'Netherlands',
-        'eerste_divisie': 'Netherlands',
-        'primeira_liga': 'Portugal',
-        'segunda_liga': 'Portugal'        
-        }
-}
-
-df = df.replace(values_to_update)
-df.drop(columns='City', inplace=True)
-df.drop(columns='Country', inplace=True)
-
+# %%
 # MODIFY CAPACITY FEATURE TO NUMERICAL VALUES
 def num_filter(x):
     numeric_filter = filter(str.isdigit, str(x))
@@ -269,8 +141,24 @@ def num_filter(x):
 
 df['Capacity'] = df['Capacity'].apply(lambda x: num_filter(x))
 
-# DROP NULL VALUES
+capacity_dict = dict()
+
+for i, team in enumerate(df.loc[~df['Capacity'].isna(), 'Home_Team']):
+    capacity_dict[team] = df.loc[i, 'Capacity']
+
+for i in df.loc[df['Capacity'].isna()].index:
+    try:
+        df.loc[i, 'Capacity'] = capacity_dict[df.loc[i, 'Home_Team']]
+    except KeyError:
+        continue
+
+df.drop(columns=['League','Stadium'], inplace=True)
+
+# DROP NULL VALUES AND RESET INDEX
 df.dropna(inplace=True)
+df.reset_index(inplace=True, drop=True)
+
+# %%
 
 # SORT DATAFRAME BY SEASON AND ROUND
 df.sort_values(by=['Season', 'Round'], inplace=True)
@@ -369,25 +257,18 @@ for season in seasons:
         away_temp_df_2 = away_temp_df_2.shift(fill_value=0)
         df.loc[(df['Away_Team'] == away_team) & (df['Season'] == season), away_col_list_2] = away_temp_df_2
 
-# %% DROP FEATURES DEEMED UNIMPORTANT
-df.drop(columns=['Home_Team', 'Away_Team', 'Result', 'Link', 'Referee', 'Stadium', 'Pitch', 'Region', 'League'], inplace=True)
-
-df.drop(columns=['Home_Yellow', 'Home_Red', 'Away_Yellow', 'Away_Red'], inplace=True)
-
-df.drop(columns=['Time', 'Day', 'Date', 'Month', 'Year'], inplace=True)
-
-df.drop(columns=['Away_Team_Result', 'Away_Team_Win', 'Away_Team_Draw', 'Away_Team_Loss'], inplace=True)
-
-df.drop(columns=['Home_Team_Score', 'Away_Team_Score'], inplace=True)
-
-df.drop(columns=['Home_Team_Win', 'Home_Team_Draw', 'Home_Team_Loss'], inplace=True)
-
-
 # %% ENCODE TARGET VARIABLE
 enc = LabelEncoder()
-
 df['Labels'] = enc.fit_transform(df['Home_Team_Result'])
-df.drop(columns=['Home_Team_Result'], inplace=True)
+
+# %% DROP FEATURES DEEMED UNIMPORTANT
+df.loc[df['Home_Team_Score'] == 10, 'Labels'] = np.nan
+
+df.drop(columns=['Home_Team', 'Away_Team', 'Result'], inplace=True)
+df.drop(columns=['Home_Team_Score', 'Away_Team_Score'], inplace=True)
+df.drop(columns=['Home_Team_Result', 'Home_Team_Win', 'Home_Team_Draw', 'Home_Team_Loss'], inplace=True)
+df.drop(columns=['Away_Team_Result', 'Away_Team_Win', 'Away_Team_Draw', 'Away_Team_Loss'], inplace=True)
+
 
 # %% UPLOAD DATA TO DATABASE
 DATABASE_TYPE = 'mysql'
@@ -416,3 +297,5 @@ classes_df = pd.DataFrame(classes)
 classes_df.to_csv('classes.csv')
 classes_df.to_sql(name='Classes_Table', con=engine, if_exists='replace', index=False)
 
+
+# %%
