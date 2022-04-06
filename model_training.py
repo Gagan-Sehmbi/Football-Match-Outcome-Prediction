@@ -42,13 +42,15 @@ inspector = inspect(engine)
 engine.connect()
 
 # %% IMPORT DATA
-#df = pd.read_sql_table('Clean_Dataset', engine, index_col=0)
-#features = pd.read_sql_table('Features_Table', engine, index_col=0)
-#classes = pd.read_sql_table('Classes_Table', engine, index_col=0)
+# SQL
+df = pd.read_sql_table('Clean_Dataset', engine, index_col=0)
+features = pd.read_sql_table('Features_Table', engine, index_col=0)
+classes = pd.read_sql_table('Classes_Table', engine, index_col=0)
 
-df = pd.read_csv('cleaned_dataset.csv', index_col=0)
-features = pd.read_csv('features.csv', index_col=0)
-classes = pd.read_csv('classes.csv', index_col=0)
+# LOCAL
+#df = pd.read_csv('cleaned_dataset.csv', index_col=0)
+#features = pd.read_csv('features.csv', index_col=0)
+#classes = pd.read_csv('classes.csv', index_col=0)
 
 
 # %% SPLIT AND SCALE DATASET
