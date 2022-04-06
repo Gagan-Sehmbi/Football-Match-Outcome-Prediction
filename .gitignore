@@ -10,12 +10,15 @@ Results.csv
 elo_dict.pkl
 
 cleaned_dataset.csv
+cleaned_train_dataset.csv
+cleaned_test_dataset.csv
 X_train.csv
 X_test.csv
 y_train.csv
 y_test.csv
 features.csv
 classes.csv
+parameters.csv
 
 __pycache__/
 login.py
