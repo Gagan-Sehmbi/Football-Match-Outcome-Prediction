@@ -95,7 +95,7 @@ df.drop(columns='Link', inplace=True)
 df.reset_index(inplace=True, drop=True)
 
 # FILL NAN VALUES IN RESULT COLUMN
-df.loc[df['Result'].isna(), 'Result'] = '10-10'
+df.loc[df['Result'].isna(), 'Result'] = '100-10'
 
 
 # %% 
@@ -262,7 +262,7 @@ enc = LabelEncoder()
 df['Labels'] = enc.fit_transform(df['Home_Team_Result'])
 
 # %% DROP FEATURES DEEMED UNIMPORTANT
-df.loc[df['Home_Team_Score'] == 10, 'Labels'] = np.nan
+df.loc[df['Home_Team_Score'] == 100, 'Labels'] = np.nan
 
 df.drop(columns=['Home_Team', 'Away_Team', 'Result'], inplace=True)
 df.drop(columns=['Home_Team_Score', 'Away_Team_Score'], inplace=True)
@@ -284,8 +284,17 @@ inspector = inspect(engine)
 
 engine.connect()
 
+df_train = df.loc[~df['Labels'].isna()]
+df_test = df.loc[df['Labels'].isna()]
+
 df.to_csv('cleaned_dataset.csv')
 df.to_sql(name='Clean_Dataset', con=engine, if_exists='replace', index=False)
+
+df_train.to_csv('cleaned_train_dataset.csv')
+df_train.to_sql(name='Clean_Train_Dataset', con=engine, if_exists='replace', index=False)
+
+df_test.to_csv('cleaned_test_dataset.csv')
+df_test.to_sql(name='Clean_Test_Dataset', con=engine, if_exists='replace', index=False)
 
 features = df.drop(columns='Labels').columns
 features_df = pd.DataFrame(features)
