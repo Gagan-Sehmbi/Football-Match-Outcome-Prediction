@@ -1,4 +1,5 @@
-# %% IMPORT LIBRARIES
+# %% 
+# IMPORT LIBRARIES
 import numpy as np
 import pandas as pd
 import pickle
@@ -42,6 +43,9 @@ df_elo = pd.DataFrame.from_dict(elo_dict, orient='index')
 df_elo.reset_index(inplace=True)
 df_elo.rename(columns={'index': 'Link', 'Elo_home': 'Home_ELO', 'Elo_away': 'Away_ELO'}, inplace=True)
 
+# %%
+df_results
+
 # %% DATA CLEANING
 # STANDARDISE LINK COLUMN IN EACH DATASET 
 def link_clean(x):
@@ -72,7 +76,8 @@ df_raw['Away_Team'] = df_raw['Away_Team'].apply(lambda x: teams_dict[x])
 df_team['Home_Team'] = df_team['Home_Team'].apply(lambda x: teams_dict[x])
 
 
-# %% COMBINE DATASETS
+# %% 
+# COMBINE DATASETS
 df = pd.merge(df_raw, df_match, on='Link', how='outer')
 df = pd.merge(df, df_team, on='Home_Team', how='outer')
 df = pd.merge(df, df_elo, on='Link', how='outer')
@@ -89,10 +94,28 @@ df.drop(df[df['Result'].str.len() != 3].index, inplace=True)
 # DROP UNUSED COLUMNS
 df.drop(columns=['Link', 'Date_New', 'Referee', 'Home_Yellow', 'Home_Red', 'Away_Yellow', 'Away_Red', 'City', 'Country', 'Pitch'], inplace=True)
 
+# STANDARDISE TEAM NAME COLUMNS IN DF
+
 df = df.append(df_results)
 df = df.append(df_fixtures)
 df.drop(columns='Link', inplace=True)
 df.reset_index(inplace=True, drop=True)
+
+ht = set(df['Home_Team'].tolist())
+at = set(df['Away_Team'].tolist())
+
+all_teams = set.union(ht, at)
+
+teams_dict = {}
+for team in all_teams:
+    try:
+        new_name = difflib.get_close_matches(team, tt)[0]
+    except:
+        new_name = team
+    teams_dict[team] = new_name
+
+df['Home_Team'] = df['Home_Team'].apply(lambda x: teams_dict[x])
+df['Away_Team'] = df['Away_Team'].apply(lambda x: teams_dict[x])
 
 # FILL NAN VALUES IN RESULT COLUMN
 df.loc[df['Result'].isna(), 'Result'] = '100-10'
@@ -159,7 +182,6 @@ df.dropna(inplace=True)
 df.reset_index(inplace=True, drop=True)
 
 # %%
-
 # SORT DATAFRAME BY SEASON AND ROUND
 df.sort_values(by=['Season', 'Round'], inplace=True)
 df.reset_index(inplace=True, drop=True)
@@ -232,6 +254,7 @@ df['Away_Loss_Ratio'] = df['Away_Team_Loss_Total']/(df['Away_Team_Draw_Total'] +
 df['Away_Loss_Ratio'] = df['Away_Loss_Ratio'].replace([np.inf, -np.inf], 100)
 df['Away_Loss_Ratio'] = df['Away_Loss_Ratio'].replace(np.nan, 0)
 
+# %%
 # CREATE SCORE/WIN/DRAW/LOSS STREAK FEATURES
 
 home_teams = list(set(df['Home_Team']))
@@ -257,11 +280,14 @@ for season in seasons:
         away_temp_df_2 = away_temp_df_2.shift(fill_value=0)
         df.loc[(df['Away_Team'] == away_team) & (df['Season'] == season), away_col_list_2] = away_temp_df_2
 
-# %% ENCODE TARGET VARIABLE
+
+# %% 
+# ENCODE TARGET VARIABLE
 enc = LabelEncoder()
 df['Labels'] = enc.fit_transform(df['Home_Team_Result'])
 
-# %% DROP FEATURES DEEMED UNIMPORTANT
+# %% 
+# DROP FEATURES DEEMED UNIMPORTANT
 df.loc[df['Home_Team_Score'] == 100, 'Labels'] = np.nan
 
 df.drop(columns=['Home_Team', 'Away_Team', 'Result'], inplace=True)
@@ -270,7 +296,8 @@ df.drop(columns=['Home_Team_Result', 'Home_Team_Win', 'Home_Team_Draw', 'Home_Te
 df.drop(columns=['Away_Team_Result', 'Away_Team_Win', 'Away_Team_Draw', 'Away_Team_Loss'], inplace=True)
 
 
-# %% UPLOAD DATA TO DATABASE
+# %% 
+# UPLOAD DATA TO DATABASE
 DATABASE_TYPE = 'mysql'
 DBAPI = 'pymysql'
 ENDPOINT = 'football-results-db-instance.cfvpwrpdvrbp.eu-west-2.rds.amazonaws.com'
