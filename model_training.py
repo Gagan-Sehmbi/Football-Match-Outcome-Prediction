@@ -1,4 +1,5 @@
-# %% IMPORT LIBRARIES
+# %% 
+# IMPORT LIBRARIES
 import time
 
 import numpy as np
@@ -21,12 +22,13 @@ from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.pipeline import Pipeline
 
-from sklearn.metrics import precision_recall_fscore_support, classification_report, accuracy_score
+from sklearn.metrics import precision_recall_fscore_support, classification_report, confusion_matrix
 
 from joblib import dump, load
 
 
-# %% IMPORT DATA FROM DATABASE
+# %% 
+# IMPORT DATA FROM DATABASE
 # CONNECT TO DATABASE
 DATABASE_TYPE = 'mysql'
 DBAPI = 'pymysql'
@@ -41,104 +43,110 @@ inspector = inspect(engine)
 
 engine.connect()
 
-# %% IMPORT DATA
+# %% 
+# IMPORT DATA
 # SQL
-df = pd.read_sql_table('Clean_Dataset', engine, index_col=0)
+df = pd.read_sql_table('Clean_Train_Dataset', engine, index_col=0)
 features = pd.read_sql_table('Features_Table', engine, index_col=0)
 classes = pd.read_sql_table('Classes_Table', engine, index_col=0)
 
-# LOCAL
-#df = pd.read_csv('cleaned_dataset.csv', index_col=0)
-#features = pd.read_csv('features.csv', index_col=0)
-#classes = pd.read_csv('classes.csv', index_col=0)
-
-
-# %% SPLIT AND SCALE DATASET
+# %% 
+# SPLIT AND SCALE DATASET
 # SPLIT INPUT FEATURES FROM TARGET FEATURE
 X = df.drop(columns=['Labels'])
 y = df['Labels']
 
 # SPLIT DATASET INTO TRAIN AND TEST SETS
-X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, shuffle=True, random_state=42)
 y_train = y_train.to_numpy().flatten()
-y_test = y_test.to_numpy().flatten()
+y_val = y_val.to_numpy().flatten()
 
 # SCALE INPUT VARIABLES
 sc = StandardScaler()
 
 X_train = sc.fit_transform(X_train)
-X_test = sc.transform(X_test)
+X_val = sc.transform(X_val)
 
-# %% BASELINE MODEL PERFORMANCE (LOGISTIC REGRESSION)
+params_df = pd.DataFrame([sc.mean_, sc.var_**0.5], index=['Mean', 'STD']).T
+
+params_df.to_csv('parameters.csv')
+params_df.to_sql(name='Parameters_Table', con=engine, if_exists='replace', index=False)
+
+# %% 
+# BASELINE MODEL PERFORMANCE (LOGISTIC REGRESSION)
 lr = LogisticRegression()
 
 s = time.perf_counter()
 lr.fit(X_train, y_train)
-y_pred_lr = lr.predict(X_test)
+y_pred_lr = lr.predict(X_val)
 print('LR Complete')
 f = time.perf_counter()
 print(f-s)
+
+print(confusion_matrix(y_true=y_val, y_pred=y_pred_lr))
 
 print('Performance of Logistic Regression Classifier (Train)\n')
 print(classification_report(y_true=y_train, y_pred=lr.predict(X_train), target_names=classes['0'].values))
 
 print('Performance of Logistic Regression Classifier (Test)\n')
-print(classification_report(y_true=y_test, y_pred=y_pred_lr, target_names=classes['0'].values))
+print(classification_report(y_true=y_val, y_pred=y_pred_lr, target_names=classes['0'].values))
 
 
-# %% COMPARE MODEL PERFORMANCES
+# %% 
+# COMPARE MODEL PERFORMANCES
 # linear models
 lr = LogisticRegression()
 s = time.perf_counter()
 lr.fit(X_train, y_train)
-y_pred_lr = lr.predict(X_test)
+y_pred_lr = lr.predict(X_val)
 print('LR Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_test, y_pred=y_pred_lr, target_names=classes['0'].values))
+print(classification_report(y_true=y_val, y_pred=y_pred_lr, target_names=classes['0'].values))
 
 # NB models
 gnb = GaussianNB()
 s = time.perf_counter()
 gnb.fit(X_train, y_train)
-y_pred_gnb = gnb.predict(X_test)
+y_pred_gnb = gnb.predict(X_val)
 print('GNB Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_test, y_pred=y_pred_gnb, target_names=classes['0'].values))
+print(classification_report(y_true=y_val, y_pred=y_pred_gnb, target_names=classes['0'].values))
 
 # neighbors models
 knn = KNeighborsClassifier()
 s = time.perf_counter()
 knn.fit(X_train, y_train)
-y_pred_knn = knn.predict(X_test)
+y_pred_knn = knn.predict(X_val)
 print('KNN Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_test, y_pred=y_pred_knn, target_names=classes['0'].values))
+print(classification_report(y_true=y_val, y_pred=y_pred_knn, target_names=classes['0'].values))
 
 # tree models
 dt = DecisionTreeClassifier()
 s = time.perf_counter()
 dt.fit(X_train, y_train)
-y_pred_dt = dt.predict(X_test)
+y_pred_dt = dt.predict(X_val)
 print('DT Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_test, y_pred=y_pred_dt, target_names=classes['0'].values))
+print(classification_report(y_true=y_val, y_pred=y_pred_dt, target_names=classes['0'].values))
 
 # ensemble models
 rfc = RandomForestClassifier()
 s = time.perf_counter()
 rfc.fit(X_train, y_train)
-y_pred_rfc = rfc.predict(X_test)
+y_pred_rfc = rfc.predict(X_val)
 print('RFC Complete')
 f = time.perf_counter()
 print(f-s)
-print(classification_report(y_true=y_test, y_pred=y_pred_rfc, target_names=classes['0'].values))
+print(classification_report(y_true=y_val, y_pred=y_pred_rfc, target_names=classes['0'].values))
 
 
-# %% TEST ALL MODELS
+# %% 
+# TEST ALL MODELS
 preds = [y_pred_lr, y_pred_gnb, y_pred_knn, y_pred_dt, y_pred_rfc]
 idx = ['Logistic Regression', 'GNB', 'KNN', 'Decision Tree', 'Random Forest']
 cols = ['Precision', 'Recall', 'F_Score', 'Support']
@@ -146,7 +154,7 @@ cols = ['Precision', 'Recall', 'F_Score', 'Support']
 performance_df = pd.DataFrame(index=idx, columns=cols)
 
 for pred, ids in zip(preds, idx):
-    result = precision_recall_fscore_support(y_true=y_test, y_pred=pred)
+    result = precision_recall_fscore_support(y_true=y_val, y_pred=pred)
     precision, recall, f_score, support = result
     performance_df.loc[ids, 'Precision'] = precision
     performance_df.loc[ids, 'Recall'] = recall
@@ -162,7 +170,7 @@ performance_df.reset_index(inplace=True)
 performance_df.rename(columns={'level_0':'Model', 'level_1':'Class'}, inplace=True)
 performance_df['Class'] = performance_df['Class'].apply(lambda x: classes['0'][x])
 
-# %% VISUALISE RESULTS
+ # %% VISUALISE RESULTS
 
 fig, axes = plt.subplots(3, 1, figsize=(15, 15), sharey=True)
 fig.suptitle('Comparing Model Performance on Validation Set')
@@ -178,7 +186,8 @@ axes[2].set_title('F_Score')
 
 plt.show()
 
-# %% CHECK FEATURE IMPORTANCE FOR RFC MODEL
+# %% 
+# CHECK FEATURE IMPORTANCE FOR RFC MODEL
 
 importances = rfc.feature_importances_
 std = np.std([tree.feature_importances_ for tree in rfc.estimators_], axis=0)
@@ -191,7 +200,8 @@ ax.set_ylabel("Mean decrease in impurity")
 
 plt.show()
 
-# %% HYPERPARAMETER TUNING + K-FOLD CROSS VALIDATION (GRIDSEARCHCV)
+# %% 
+# HYPERPARAMETER TUNING + K-FOLD CROSS VALIDATION (GRIDSEARCHCV)
 
 pipe = Pipeline([('classifier' , RandomForestClassifier())])
 # pipe = Pipeline([('classifier', RandomForestClassifier())])
@@ -220,6 +230,12 @@ best_clf = clf.fit(X_train, y_train)
 model = best_clf.best_params_['classifier']
 model.fit(X_train, y_train)
 dump(model, 'classifier.joblib')
+model = load('classifier.joblib')
+
+# %% 
+# PRINT RESULTS
+print(confusion_matrix(y_true = y_val, y_pred = model.predict(X_val)))
+print(classification_report(y_true = y_val, y_pred = model.predict(X_val)))
 
 # %% HYPERPARAMETER TUNING + K-FOLD CROSS VALIDATION (MANUAL)
 
@@ -268,17 +284,17 @@ n_splits = 5
 for hyperparams in grid_search(random_grid):
     acc = 0
     # Instead of validation we use K-Fold
-    for (X_train, X_test), (y_train, y_test) in zip(k_fold(X, n_splits), k_fold(y, n_splits)):
+    for (X_train, X_val), (y_train, y_val) in zip(k_fold(X, n_splits), k_fold(y, n_splits)):
 
         sc = StandardScaler()
         X_train = sc.fit_transform(X_train)
-        X_test = sc.transform(X_test)
+        X_val = sc.transform(X_val)
         
         model = RandomForestClassifier(**hyperparams)
         model.fit(X_train, y_train)
 
-        y_test_pred = model.predict(X_test)
-        fold_acc = accuracy_score(y_test, y_test_pred)
+        y_val_pred = model.predict(X_val)
+        fold_acc = accuracy_score(y_val, y_val_pred)
         acc += fold_acc
     # Take mean from all folds as final validation score
     total_acc = acc / n_splits
@@ -291,3 +307,5 @@ for hyperparams in grid_search(random_grid):
 print(f"Best loss: {best_accuracy}")
 print(f"Best hyperparameters: {best_hyperparams}")
 '''
+
+# %%
