@@ -50,6 +50,9 @@ df = pd.read_sql_table('Clean_Train_Dataset', engine, index_col=0)
 features = pd.read_sql_table('Features_Table', engine, index_col=0)
 classes = pd.read_sql_table('Classes_Table', engine, index_col=0)
 
+df.drop(columns=['Home_Team', 'Away_Team'], inplace=True)
+features.drop(index=[0, 1], inplace=True)
+
 # %% 
 # SPLIT AND SCALE DATASET
 # SPLIT INPUT FEATURES FROM TARGET FEATURE
