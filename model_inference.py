@@ -31,7 +31,8 @@ engine.connect()
 
 # %% IMPORT DATA
 # SQL
-df = pd.read_sql_table('Clean_Test_Dataset', engine, index_col=0)
+frame = pd.read_sql_table('Clean_Test_Dataset', engine, index_col=0)
+df = frame.drop(columns=['Home_Team', 'Away_Team'])
 features = pd.read_sql_table('Features_Table', engine, index_col=0)
 classes = pd.read_sql_table('Classes_Table', engine, index_col=0)
 params = pd.read_sql_table('Parameters_Table', engine, index_col=0)
@@ -46,11 +47,13 @@ data = (df.values - params['Mean'].values)/params['STD'].values
 
 results = classifier.predict(data)
 
-df['Prediction'] = results
-df['Prediction'] = df['Prediction'].apply(lambda x: classes.loc[x, '0'])
+results_df = frame[['Home_Team', 'Away_Team']]
 
-# %% 
-df['Prediction'].value_counts()
+results_df['Home_Team_Prediction'] = results
+results_df['Home_Team_Prediction'] = results_df['Home_Team_Prediction'].apply(lambda x: classes.loc[x, '0'])
 
+results_df
+
+# %%
 
 # %%
