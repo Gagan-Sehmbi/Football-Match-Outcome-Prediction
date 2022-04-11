@@ -22,11 +22,9 @@ df_raw.drop(columns='Unnamed: 0', inplace=True)
 
 # IMPORT RESULTS (LATEST LEAGUE INFO)
 df_results = pd.read_csv('Results.csv', index_col=0)
-df_results.drop(columns='Unnamed: 0', inplace=True)
 
 # IMPORT FIXTURES (LATEST LEAGUE INFO)
 df_fixtures = pd.read_csv('Fixtures.csv', index_col=0)
-df_fixtures.drop(columns='Unnamed: 0', inplace=True)
 
 # IMPORT MATCH INFO
 df_match = pd.read_csv('Match_Info.csv', index_col=0)
@@ -42,9 +40,6 @@ elo_dict = pickle.load(open('elo_dict.pkl', 'rb'))
 df_elo = pd.DataFrame.from_dict(elo_dict, orient='index')
 df_elo.reset_index(inplace=True)
 df_elo.rename(columns={'index': 'Link', 'Elo_home': 'Home_ELO', 'Elo_away': 'Away_ELO'}, inplace=True)
-
-# %%
-df_results
 
 # %% DATA CLEANING
 # STANDARDISE LINK COLUMN IN EACH DATASET 
@@ -117,9 +112,10 @@ for team in all_teams:
 df['Home_Team'] = df['Home_Team'].apply(lambda x: teams_dict[x])
 df['Away_Team'] = df['Away_Team'].apply(lambda x: teams_dict[x])
 
+# %%
 # FILL NAN VALUES IN RESULT COLUMN
 df.loc[df['Result'].isna(), 'Result'] = '100-10'
-
+df.drop(df.loc[df['Result'].str.contains('N')].index, inplace=True)
 
 # %% 
 # SPLIT RESULTS TO HOME TEAM AND AWAY TEAM SCORE FEATURES
@@ -290,7 +286,7 @@ df['Labels'] = enc.fit_transform(df['Home_Team_Result'])
 # DROP FEATURES DEEMED UNIMPORTANT
 df.loc[df['Home_Team_Score'] == 100, 'Labels'] = np.nan
 
-df.drop(columns=['Home_Team', 'Away_Team', 'Result'], inplace=True)
+df.drop(columns=['Result'], inplace=True)
 df.drop(columns=['Home_Team_Score', 'Away_Team_Score'], inplace=True)
 df.drop(columns=['Home_Team_Result', 'Home_Team_Win', 'Home_Team_Draw', 'Home_Team_Loss'], inplace=True)
 df.drop(columns=['Away_Team_Result', 'Away_Team_Win', 'Away_Team_Draw', 'Away_Team_Loss'], inplace=True)
